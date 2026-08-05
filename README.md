@@ -4,8 +4,28 @@ minimal http engine over raw tcp • sweet & lightweight
 
 A simple, multithreaded HTTP server built in C. Designed with zero bloat, clean file isolation, and dynamic file streaming.
 
+## Install
 
-## 📂 Structure
+#### Dependencies
+* clang
+* make
+
+### Download
+```bash
+git clone https://github.com/yadpreetrandhawa/denko
+cd denko
+make
+```
+
+## run
+```bash
+./bin/denko
+# denko can be added to your corresponding shell path
+```
+
+#### To exit denko, press [CTRL + C]
+
+## File Structure
 
 ```text
 denko/
