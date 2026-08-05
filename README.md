@@ -10,11 +10,14 @@ Just drop *any* HTML, CSS, JavaScript, or media files into the `public/` directo
 
 ## Install
 
-#### Dependencies
-* clang
-* make
+#### dependencies
 
-### Download
+* c compiler
+* make
+* posix-like environment
+
+### download
+
 ```bash
 git clone https://github.com/yadpreetrandhawa/denko
 cd denko
@@ -22,6 +25,7 @@ make
 ```
 
 ## run
+
 ```bash
 ./bin/denko
 # denko can be added to your corresponding shell path
