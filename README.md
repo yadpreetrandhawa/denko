@@ -51,17 +51,14 @@ make
 denko/
 ├── bin/            # Compiled binaries
 ├── include/        # Header files
-│   ├── denko.h     # Core server declarations
 │   ├── http.h      # HTTP protocol parser & MIME engine
-│   ├── net.h       # Socket creation & networking
-│   └── pool.h      # Thread pool declarations
+│   └── net.h       # Socket creation & networking
 ├── public/         # Static assets
 │   └── index.html  # Dashboard page
 ├── src/            # Implementation
 │   ├── http.c      # HTTP request handling & static file serving
 │   ├── main.c      # Main entry point
-│   ├── net.c       # Client connection loop & threading
-│   └── pool.c      # Thread pool worker queue
+│   └── net.c       # Client connection loop & threading
 ├── .gitignore
 ├── Makefile
 └── README.md
