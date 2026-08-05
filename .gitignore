@@ -1,4 +1,11 @@
+# binary directory
+bin/
+
+# binaries
+denko
 *.o
-*.out
-a.out
-*.exe
+*.dSYM/
+
+# os metadata
+.DS_Store
+Thumbs.db

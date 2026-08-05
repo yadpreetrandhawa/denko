@@ -1,22 +1,27 @@
-# ⚡ Denko
+# 🎐 denko
 
-A lightweight, high-performance C HTTP server designed around non-blocking I/O and efficient memory management.
+minimal http engine • sweet & lightweight
 
----
+A simple, multithreaded HTTP server built in C. Designed with zero bloat, clean file isolation, and dynamic file streaming.
 
-## 📂 Project Structure
+
+## 📂 Structure
 
 ```text
 denko/
-├── CMakeLists.txt     # Build configuration
-├── README.md          # Project documentation
-├── include/           # Public headers
-│   ├── denko.h        # Main server interface & configuration
-│   ├── http.h         # HTTP request/response structures
-│   ├── net.h          # Socket management & epoll/kqueue setup
-│   └── pool.h         # Memory arena & buffer pool declarations
-└── src/               # Implementation files
-    ├── main.c         # Entry point & CLI handling
-    ├── net.c          # Event loop & non-blocking I/O
-    ├── http.c         # HTTP protocol parser & formatter
-    └── pool.c         # Memory arena allocator
+├── bin/            # Compiled binaries
+├── include/        # Header files
+│   ├── denko.h     # Core server declarations
+│   ├── http.h      # HTTP protocol parser & MIME engine
+│   ├── net.h       # Socket creation & networking
+│   └── pool.h      # Thread pool declarations
+├── public/         # Static assets
+│   └── index.html  # Dashboard page
+├── src/            # Implementation
+│   ├── http.c      # HTTP request handling & static file serving
+│   ├── main.c      # Main entry point
+│   ├── net.c       # Client connection loop & threading
+│   └── pool.c      # Thread pool worker queue
+├── .gitignore
+├── Makefile
+└── README.md
