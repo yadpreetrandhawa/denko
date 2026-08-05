@@ -1,6 +1,6 @@
 # 🎐 denko
 
-<u>minimal</u> http engine over raw tcp • sweet & lightweight
+minimal http engine over raw tcp • sweet & lightweight
 
 >A simple, multithreaded HTTP server built in C. Designed with zero bloat, clean file isolation, and dynamic file streaming.
 
