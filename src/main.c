@@ -8,7 +8,6 @@ int main(void)
     scanf("%d", &port);
     if (port >= 7000 && port <= 9000)
     {
-        printf("[denko] http://localhost:%d\n", port);
         openPort(port);
     }
     else
