@@ -1,7 +1,10 @@
 #include "http.h"
+#include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -46,6 +49,58 @@ int http_parse_request(const char* raw_req, HttpRequest* req) {
     return 0;
 }
 
+static int open_document(const char* request_path) {
+    if (!request_path || request_path[0] != '/') {
+        errno = EACCES;
+        return -1;
+    }
+
+    char relative_path[256];
+    if (snprintf(relative_path, sizeof(relative_path), "%s", request_path + 1) >=
+        (int)sizeof(relative_path)) {
+        errno = EACCES;
+        return -1;
+    }
+
+    int directory_fd = open("public", O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
+    if (directory_fd < 0) return -1;
+
+    char* save_pointer;
+    char* component = strtok_r(relative_path, "/", &save_pointer);
+    if (!component) {
+        close(directory_fd);
+        errno = EACCES;
+        return -1;
+    }
+
+    while (component) {
+        char* next_component = strtok_r(NULL, "/", &save_pointer);
+        if (strcmp(component, ".") == 0 || strcmp(component, "..") == 0) {
+            close(directory_fd);
+            errno = EACCES;
+            return -1;
+        }
+
+        if (next_component) {
+            int next_directory_fd = openat(directory_fd, component,
+                O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
+            close(directory_fd);
+            if (next_directory_fd < 0) return -1;
+            directory_fd = next_directory_fd;
+        } else {
+            int file_fd = openat(directory_fd, component, O_RDONLY | O_NOFOLLOW);
+            close(directory_fd);
+            return file_fd;
+        }
+
+        component = next_component;
+    }
+
+    close(directory_fd);
+    errno = EACCES;
+    return -1;
+}
+
 void http_handle_request(int client_socket, const HttpRequest* req) {
     if (strcmp(req->method, "GET") != 0) {
         char err_405[] = "HTTP/1.1 405 Method Not Allowed\r\nAllow: GET\r\nContent-Length: 18\r\nConnection: close\r\n\r\nMethod Not Allowed";
@@ -53,27 +108,40 @@ void http_handle_request(int client_socket, const HttpRequest* req) {
         return;
     }
 
-    // security check
-    if (strstr(req->path, "..") != NULL) {
-        char err_403[] = "HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\nForbidden!";
-        http_send_all(client_socket, err_403, strlen(err_403));
-        return;
-    }
-
     char file_path[512];
     snprintf(file_path, sizeof(file_path), "public%s", req->path);
 
-    FILE* file = fopen(file_path, "rb");
+    int file_fd = open_document(req->path);
+    if (file_fd < 0) {
+        if (errno == EACCES || errno == ELOOP) {
+            char err_403[] = "HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\nForbidden!";
+            http_send_all(client_socket, err_403, strlen(err_403));
+            return;
+        }
+
+        char err_404[] = "HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: 23\r\n\r\n<h1>404 Not Found</h1>";
+        http_send_all(client_socket, err_404, strlen(err_404));
+        return;
+    }
+
+    FILE* file = fdopen(file_fd, "rb");
     if (!file) {
+        close(file_fd);
+        char err_404[] = "HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: 23\r\n\r\n<h1>404 Not Found</h1>";
+        http_send_all(client_socket, err_404, strlen(err_404));
+        return;
+    }
+
+    struct stat file_info;
+    if (fstat(file_fd, &file_info) < 0 || !S_ISREG(file_info.st_mode)) {
+        fclose(file);
         char err_404[] = "HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: 23\r\n\r\n<h1>404 Not Found</h1>";
         http_send_all(client_socket, err_404, strlen(err_404));
         return;
     }
 
     // get file size
-    fseek(file, 0, SEEK_END);
-    long size = ftell(file);
-    fseek(file, 0, SEEK_SET);
+    long size = file_info.st_size;
 
     // response header
     char header[256];
