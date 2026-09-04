@@ -8,18 +8,44 @@
 #include <unistd.h>
 #include <pthread.h>
 
+#include <sys/time.h>
+#include <string.h>
+
 void* handle_client(void* arg) {
     int client_socket = *(int*)arg;
     free(arg);
 
-    char buffer[2048] = {0};
-    ssize_t bytes_read = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
+    struct timeval timeout = {5, 0};
+    setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-    if (bytes_read > 0) {
+    char buffer[4096] = {0};
+    size_t total_read = 0;
+    int request_complete = 0;
+
+    while (total_read < sizeof(buffer) - 1) {
+        ssize_t bytes_read = recv(client_socket, buffer + total_read,
+            sizeof(buffer) - 1 - total_read, 0);
+        if (bytes_read <= 0) break;
+
+        total_read += (size_t)bytes_read;
+        buffer[total_read] = '\0';
+        if (strstr(buffer, "\r\n\r\n") != NULL) {
+            request_complete = 1;
+            break;
+        }
+    }
+
+    if (request_complete) {
         HttpRequest req;
         if (http_parse_request(buffer, &req) == 0) {
             http_handle_request(client_socket, &req);
+        } else {
+            char err_400[] = "HTTP/1.1 400 Bad Request\r\nContent-Length: 11\r\nConnection: close\r\n\r\nBad Request";
+            http_send_all(client_socket, err_400, sizeof(err_400) - 1);
         }
+    } else {
+        char err_400[] = "HTTP/1.1 400 Bad Request\r\nContent-Length: 11\r\nConnection: close\r\n\r\nBad Request";
+        http_send_all(client_socket, err_400, sizeof(err_400) - 1);
     }
 
     close(client_socket);

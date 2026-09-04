@@ -17,10 +17,25 @@ static const char* get_mime_type(const char* path) {
     return "text/plain";
 }
 
+int http_send_all(int client_socket, const void* data, size_t length) {
+    const char* buffer = data;
+    size_t sent = 0;
+
+    while (sent < length) {
+        ssize_t bytes = send(client_socket, buffer + sent, length - sent, 0);
+        if (bytes <= 0) return -1;
+        sent += (size_t)bytes;
+    }
+
+    return 0;
+}
+
 int http_parse_request(const char* raw_req, HttpRequest* req) {
     if (!raw_req || !req) return -1;
-    
-    if (sscanf(raw_req, "%15s %255s", req->method, req->path) != 2) {
+
+    char protocol[16];
+    if (sscanf(raw_req, "%15s %255s %15s", req->method, req->path, protocol) != 3 ||
+        strncmp(protocol, "HTTP/", 5) != 0) {
         return -1;
     }
     
@@ -32,10 +47,16 @@ int http_parse_request(const char* raw_req, HttpRequest* req) {
 }
 
 void http_handle_request(int client_socket, const HttpRequest* req) {
+    if (strcmp(req->method, "GET") != 0) {
+        char err_405[] = "HTTP/1.1 405 Method Not Allowed\r\nAllow: GET\r\nContent-Length: 18\r\nConnection: close\r\n\r\nMethod Not Allowed";
+        http_send_all(client_socket, err_405, strlen(err_405));
+        return;
+    }
+
     // security check
     if (strstr(req->path, "..") != NULL) {
         char err_403[] = "HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\nForbidden!";
-        send(client_socket, err_403, strlen(err_403), 0);
+        http_send_all(client_socket, err_403, strlen(err_403));
         return;
     }
 
@@ -45,7 +66,7 @@ void http_handle_request(int client_socket, const HttpRequest* req) {
     FILE* file = fopen(file_path, "rb");
     if (!file) {
         char err_404[] = "HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: 23\r\n\r\n<h1>404 Not Found</h1>";
-        send(client_socket, err_404, strlen(err_404), 0);
+        http_send_all(client_socket, err_404, strlen(err_404));
         return;
     }
 
@@ -62,13 +83,13 @@ void http_handle_request(int client_socket, const HttpRequest* req) {
         "Content-Length: %ld\r\n"
         "Connection: close\r\n\r\n",
         get_mime_type(file_path), size);
-    send(client_socket, header, hlen, 0);
+    http_send_all(client_socket, header, (size_t)hlen);
 
     // stream body
     char chunk[1024];
     size_t bytes;
     while ((bytes = fread(chunk, 1, sizeof(chunk), file)) > 0) {
-        send(client_socket, chunk, bytes, 0);
+        if (http_send_all(client_socket, chunk, bytes) != 0) break;
     }
 
     fclose(file);

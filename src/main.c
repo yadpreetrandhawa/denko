@@ -5,14 +5,20 @@ int main(void)
 {
     int port = 0;
     printf("[denko] Enter a port [7000 - 9000]: ");
-    scanf("%d", &port);
+    if (scanf("%d", &port) != 1)
+    {
+        printf("[denko] Please enter a numeric port.\n");
+        return 1;
+    }
+
     if (port >= 7000 && port <= 9000)
     {
-        openPort(port);
+        return openPort(port);
     }
     else
     {
-        printf("[denko] Please enter a approiate port range");
+        printf("[denko] Please enter an appropriate port range.\n");
     }
+
     return 1;
 }
